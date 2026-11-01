@@ -1,0 +1,32 @@
+name: Verify KLAIM CLI
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install-and-test:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+    steps:
+      - name: Install the published formula
+        run: brew install ecomvaulttt/klaim/klaim-agent
+      - name: Run the offline formula tests
+        run: brew test ecomvaulttt/klaim/klaim-agent
+      - name: Verify the real sandbox and MCP resources
+        run: |
+          klaim-agent sandbox-product demo-hoodie > sandbox.json
+          klaim-agent resources > resources.json
+          python3 - <<'PYVERIFY'
+          import json
+          with open('sandbox.json') as f:
+              sandbox = json.load(f)
+          with open('resources.json') as f:
+              resources = json.load(f)
+          assert sandbox['environment'] == 'sandbox'
+          assert sandbox['product']['handle'] == 'demo-hoodie'
+          assert len(resources['result']['resources']) == 3
+          print('Real installed Homebrew executable: sandbox and MCP verified')
+          PYVERIFY
